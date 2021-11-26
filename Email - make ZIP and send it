@@ -1,0 +1,65 @@
+""" 
+Task: make some zip files from selected folders snd send them by EMail in the attachment
+"""
+
+import os.path
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
+from email.mime.base import MIMEBase
+from email.mime.text import MIMEText
+from email import encoders
+import os
+import shutil
+
+
+def make_archive(source, destination):
+    base = os.path.basename(destination)
+    name = base.split('.')[0]
+    archformat = base.split('.')[1]
+    archive_from = os.path.dirname(source)
+    archive_to = os.path.basename(source.strip(os.sep))
+#   print(source, destination, archive_from, archive_to)
+    shutil.make_archive(name, archformat, archive_from, archive_to)
+    shutil.move('%s.%s' % (name, archformat), destination)
+
+
+# create your .zip file
+file1_name = os.path.join("C:", os.sep, "Folder1", "Subfolder1")
+file2_name = os.path.join("D:", os.sep, "Folder2", "Subfolder2")
+zip_file1_name = "YourFilename1.zip"
+zip_file2_name = "YourFilename2.zip"
+
+# zip the file_name to zip_file_name
+make_archive(file1_name, zip_file1_name)
+make_archive(file2_name, zip_file2_name)
+
+# send E-Mail with attachment
+msg = MIMEMultipart()
+msg["From"] = 'sender@email.address'
+msg["Subject"] = 'ZIP from John Doe'
+msg["To"] = 'recipient@email.address'
+body_part = MIMEText(_text="Hello! \nbla-bla-bla\nBest regards,\nJohn Doe")
+msg.attach(body_part)
+
+# open and read the file in binary
+file_name_list = [zip_file1_name, zip_file2_name]
+for file_name in file_name_list:
+    attachment = open(file_name, 'rb')
+    part = MIMEBase('application', 'octet-stream')
+    part.set_payload(attachment.read())
+    part.add_header('Content-Disposition', 'attachment', filename=file_name)
+    encoders.encode_base64(part)
+    msg.attach(part)
+    attachment.close()
+
+
+smtp_srv = smtplib.SMTP(host='your.smtp.server.name', port=587)
+smtp_srv.starttls()
+smtp_srv.login(user='sender@email.login', password='SenderEmailPassword')
+smtp_srv.sendmail(msg['From'], msg['To'], msg.as_string())
+smtp_srv.quit()
+
+#remove created ZIP files
+os.remove(zip_file1_name)
+os.remove(zip_file2_name)
